@@ -1,189 +1,164 @@
 import streamlit as st
-import datetime
+import sqlite3
+import os
+from datetime import datetime
 
-# 1. НАЛАШТУВАННЯ СТОРІНКИ
-st.set_page_config(
-    page_title="Luna Studio | Nail Esthetic", 
-    page_icon="🌙", 
-    layout="centered"
-)
+# --- 1. НАЛАШТУВАННЯ СТОРІНКИ ТА БАЗИ ДАНИХ ---
+st.set_page_config(page_title="Luna Studio | Манікюр", page_icon="💅", layout="centered")
 
-# Ініціалізація стану кнопок (щоб сайт пам'ятав, яку вкладку відкрито)
-if 'menu_selection' not in st.session_state:
-    st.session_state.menu_selection = "main"
+# Створення бази даних для заявок, відгуків та фотографій
+conn = sqlite3.connect("luna_studio_db.sqlite", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS appointments 
+    (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, phone TEXT, service TEXT, date TEXT, time TEXT, status TEXT DEFAULT 'Нова')
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS feedback 
+    (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, text TEXT, rating INTEGER, date TEXT)
+""")
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS settings 
+    (key TEXT PRIMARY KEY, value TEXT)
+""")
+conn.commit()
 
-# 2. СТИЛІЗАЦІЯ (CSS) ДЛЯ СТВОРЕННЯ РОЖЕВОЇ ЕСТЕТИКИ LUNA STUDIO
-pink_design = """
-<style>
-    /* Головний фон сайту — ніжний пастельно-рожевий */
-    .stApp {
-        background-color: #FFF5F7;
-    }
-    
-    /* Головний логотип Luna Studio */
-    .logo-title {
-        color: #C71585;
-        font-family: 'Playfair Display', 'Georgia', serif;
-        text-align: center;
-        font-size: 42px;
-        font-weight: bold;
-        margin-bottom: 5px;
-        letter-spacing: 2px;
-    }
-    
-    /* Заголовки блоків */
-    h2, h3 {
-        color: #D2143A;
-        font-family: 'Segoe UI', sans-serif;
-        text-align: center;
-    }
-    
-    /* Текст підзаголовка */
-    .subtitle {
-        text-align: center;
-        color: #C71585;
-        font-size: 16px;
-        font-style: italic;
-        margin-bottom: 35px;
-        letter-spacing: 1px;
-    }
+# Пароль для доступу до адмінки (передайте його тому, хто керуватиме сайтом)
+ADMIN_PASSWORD = "LunaAdmin2026"
 
-    /* Контейнер для фото — біла картка, яка НЕ зливається з фоном */
-    .photo-container {
-        background-color: #FFFFFF;
-        padding: 12px;
-        border-radius: 18px;
-        box-shadow: 0 6px 20px rgba(219, 112, 147, 0.12);
-        text-align: center;
-        margin-bottom: 25px;
-        border: 2px solid #FFB6C1;
-        position: relative;
+# Директорія для збереження завантажених фотографій
+UPLOAD_DIR = "uploaded_works"
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
+
+# --- 2. ЕСТЕТИЧНИЙ АДАПТИВНИЙ ДИЗАЙН (РОЖЕВИЙ) ---
+pink_style = """
+    <style>
+    .stApp { background-color: #FFF5F7; }
+    h1, h2, h3 { color: #D14D72; font-family: 'Arial', sans-serif; text-align: center; }
+    p, span, label { color: #4A3036 !important; }
+    .service-card {
+        background-color: #FFFFFF; padding: 20px; border-radius: 16px;
+        margin-bottom: 15px; border: 1px solid #FFDEE5;
+        box-shadow: 0 4px 12px rgba(209, 77, 114, 0.06);
     }
-    
-    /* Ефект магічних зірочок навколо рамки фото */
-    .photo-container::before {
-        content: "✨ 🌙 ✨";
-        position: absolute;
-        top: -14px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #FFF5F7;
-        padding: 0 10px;
-        color: #FF69B4;
-        font-size: 13px;
+    .stButton>button {
+        background-color: #FF8E9E; color: white !important;
+        border-radius: 25px; border: none; padding: 12px 30px;
+        font-weight: bold; width: 100%; box-shadow: 0 4px 10px rgba(255, 142, 158, 0.4);
     }
-    
-    /* Стиль для великих рожевих кнопок */
-    .stButton > button {
-        width: 100%;
-        background-color: #FF69B4;
-        color: white !important;
-        border-radius: 25px;
-        border: 2px solid #FFB6C1;
-        padding: 12px 20px;
-        font-size: 16px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 10px rgba(255, 105, 180, 0.2);
+    .stButton>button:hover { background-color: #D14D72; }
+    .feedback-box {
+        background-color: #FFFFFF; padding: 15px; border-radius: 12px;
+        border-left: 5px solid #FF8E9E; margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
-    
-    /* Ефект при наведенні мишки на кнопку */
-    .stButton > button:hover {
-        background-color: #C71585;
-        border-color: #C71585;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(199, 21, 133, 0.3);
-    }
-    
-    /* Інформаційні картки для списків */
-    .info-card {
-        background: white;
-        padding: 20px;
-        border-radius: 15px;
-        border-left: 5px solid #FF69B4;
-        margin-bottom: 15px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.04);
-    }
-</style>
+    </style>
 """
-st.markdown(pink_design, unsafe_allow_html=True)
+st.markdown(pink_style, unsafe_allow_html=True)
 
-# 3. ШАПКА САЙТУ З НОВИМ ЛОГОТИПОМ
-st.markdown("<div class='logo-title'>LUNA STUDIO</div>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>🌙 Твій магічний простір ідеального манікюру ✨</p>", unsafe_allow_html=True)
+# --- 3. НАВІГАЦІЯ (Вгорі екрану) ---
+page = st.selectbox("Перейти до розділу:", ["Головна сторінка", "Прайс та Запис", "Відгуки клієнтів", "👑 Панель Адміністратора"])
 
-# 4. БЛОК ФОТОГРАФІЙ (ГАЛЕРЕЯ РОБІТ)
-col1, col2, col3 = st.columns(3)
+st.write("---")
 
-with col1:
-    st.markdown('<div class="photo-container">', unsafe_allow_html=True)
-    st.image("photo1.jpg", use_container_width=True)
-    st.markdown("<small style='color:#C71585; font-weight:bold;'>Елегантний Нюд</small>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col2:
-    st.markdown('<div class="photo-container">', unsafe_allow_html=True)
-    st.image("photo2.jpg", use_container_width=True)
-    st.markdown("<small style='color:#C71585; font-weight:bold;'>Ідеальний Френч</small>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-with col3:
-    st.markdown('<div class="photo-container">', unsafe_allow_html=True)
-    st.image("photo3.jpg", use_container_width=True)
-    st.markdown("<small style='color:#C71585; font-weight:bold;'>Сяючі Тренди</small>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-st.write("---") 
-
-# 5. БЛОК ТРЬОХ ГОЛОВНИХ КНОПОК
-btn_col1, btn_col2, btn_col3 = st.columns(3)
-
-with btn_col1:
-    if st.button("📅 Запис на манікюр"):
-        st.session_state.menu_selection = "zapis"
-
-with btn_col2:
-    if st.button("✨ Каталог ідей"):
-        st.session_state.menu_selection = "catalog"
-
-with btn_col3:
-    if st.button("🛡️ Гарантія безпеки"):
-        st.session_state.menu_selection = "safety"
-
-st.write("") 
-
-# 6. ЛОГІКА КНОПОК
-
-# --- КНОПКА 1: ЗАПИС НА МАНІКЮР ---
-if st.session_state.menu_selection == "zapis":
-    st.markdown("### 📝 Онлайн-запис в Luna Studio")
-    with st.form("booking_form"):
-        client_name = st.text_input("Ваше ім'я:")
-        client_phone = st.text_input("Номер телефону (Viber/Telegram):")
-        chosen_service = st.selectbox("Оберіть послугу:", ["Манікюр з покриттям", "Укріплення та дизайн", "Нарощування нігтів", "Педикюр"])
-        chosen_date = st.date_input("Оберіть зручний день:", min_value=datetime.date.today())
-        
-        submit_btn = st.form_submit_button("Надіслати заявку")
-        if submit_btn:
-            if client_name and client_phone:
-                st.success(f"🌙 Дякуємо, {client_name}! Заявку прийнято на {chosen_date.strftime('%d.%m.%Y')}. Студія Luna зв'яжеться з вами найближчим часом!")
+# ==========================================
+# РОЗДІЛ 1: ГОЛОВНА СТОРІНКА
+# ==========================================
+if page == "Головна сторінка":
+    st.markdown("<h1>Luna Studio</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; font-style: italic; color: #885A65;'>Простір твого бездоганного стилю ✨</p>", unsafe_allow_html=True)
+    
+    st.markdown("### Наші роботи")
+    st.write("Фото оновлюються адміністратором у реальному часі:")
+    
+    # Виведення фотографій, які завантажив адмін
+    cols = st.columns(3)
+    for i in range(1, 4):
+        img_path = os.path.join(UPLOAD_DIR, f"work_{i}.jpg")
+        with cols[i-1]:
+            if os.path.exists(img_path):
+                st.image(img_path, use_container_width=True, caption=f"Робота №{i}")
             else:
-                st.error("Будь ласка, вкажіть ваше ім'я та телефон для зв'язку.")
+                st.image("https://placeholder.com", use_container_width=True, caption="Місце для фото")
 
-# --- КНОПКА 2: КАТАЛОГ ДИЗАЙН-ІДЕЙ ---
-elif st.session_state.menu_selection == "catalog":
-    st.markdown("### ✨ Топ-дизайни від Luna Studio")
-    st.markdown('<div class="info-card"><b>⭐ Місячний манікюр:</b> Наш фірмовий дизайн із витонченими блискітками біля основи нігтя.</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-card"><b>💎 Глазуровані нігті:</b> Трендова втирка, що створює ефект дорогого перлинного сяйва.</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-card"><b>🎨 Акварельні мазки:</b> Абстрактні ніжні розмиви у рожевих та пастельних тонах.</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div style='text-align: center; margin-top: 30px;'>
+        <p>📍 <b>Адреса:</b> м. Київ, вул. Центральна, 12</p>
+        <p>📞 <b>Телефон:</b> +380 (93) 123-45-67</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-# --- КНОПКА 3: ГАРАНТІЯ БЕЗПЕКИ ---
-elif st.session_state.menu_selection == "safety":
-    st.markdown("### 🛡️ Твоя безпека в Luna Studio")
-    st.write("Ми дбаємо про твою красу та здоров'я, тому використовуємо виключно стерильний інструмент:")
-    st.markdown('<div class="info-card"><b>🧼 1. Дезінфекція:</b> Замочування інструментів у розчині преміум-класу одразу після клієнта.</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-card"><b>💧 2. Очищення:</b> Ретельне промивання та сушка перед термічною обробкою.</div>', unsafe_allow_html=True)
-    st.markdown('<div class="info-card"><b>🔥 3. Стерилізація:</b> Випікання в сертифікованому сухожарі. Крафт-пакет відкриваємо тільки при тобі!</div>', unsafe_allow_html=True)
+# ==========================================
+# РОЗДІЛ 2: ПРАЙС ТА ОНЛАЙН-ЗАПИС
+# ==========================================
+elif page == "Прайс та Запис":
+    st.markdown("<h2>Послуги та онлайн-запис</h2>")
+    
+    services = [
+        {"title": "🌸 Комбінований манікюр", "desc": "Гігієнічна чистка, форма, догляд за кутикулою.", "price": "350 грн"},
+        {"title": "✨ Манікюр + Покриття", "desc": "Вирівнювання пластини, однотонне покриття гель-лаком.", "price": "550 грн"},
+        {"title": "💅 Нарощування нігтів", "desc": "Моделювання нігтів гелем + легкий дизайн.", "price": "від 750 грн"}
+    ]
+    
+    for s in services:
+        st.markdown(f"""
+        <div class="service-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #D14D72; font-size: 1.1rem;">{s['title']}</strong>
+                <span style="background: #FFDEE5; padding: 4px 10px; border-radius: 12px; font-weight: bold; color: #D14D72;">{s['price']}</span>
+            </div>
+            <p style="margin-top: 8px; margin-bottom: 0; font-size: 0.9rem; color: #666;">{s['desc']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    st.write("---")
+    st.markdown("### Записатися на візит")
+    
+    with st.form("appointment_form", clear_on_submit=True):
+        name = st.text_input("Ваше ім'я:")
+        phone = st.text_input("Номер телефону для зв'язку (Viber/Telegram):")
+        chosen_service = st.selectbox("Оберіть послугу:", [s["title"] for s in services])
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            date = st.date_input("Дата візиту:")
+        with c2:
+            time = st.time_input("Бажаний час:")
+            
+        submit = st.form_submit_button("Підтвердити запис 💖")
+        
+        if submit:
+            if name and phone:
+                cursor.execute(
+                    "INSERT INTO appointments (name, phone, service, date, time) VALUES (?, ?, ?, ?, ?)",
+                    (name, phone, chosen_service, str(date), str(time))
+                )
+                conn.commit()
+                st.balloons()
+                st.success(f"✨ Дякуємо, {name}! Заявку надіслано. Майстер зв'яжеться з вами найближчим часом.")
+            else:
+                st.error("Будь ласка, заповніть поля Ім'я та Телефон!")
 
-# 7. ПІДВАЛ (ФУТЕР) САЙТУ
-st.markdown("💅 Luna Studio 2026")
+# ==========================================
+# РОЗДІЛ 3: ЗВОРОТНІЙ ЗВ'ЯЗОК (ВІДГУКИ)
+# ==========================================
+elif page == "Відгуки клієнтів":
+    st.markdown("<h2>Зворотній зв'язок</h2>")
+    
+    # Спеціальна кнопка-експандер для написання відгуку
+    with st.expander("✍️ Залишити свій відгук студії"):
+        with st.form("feedback_form", clear_on_submit=True):
+            f_name = st.text_input("Ваше ім'я:")
+            f_text = st.text_area("Ваші враження від візиту (що сподобалось?):")
+            f_rating = st.slider("Ваша оцінка майстру:", 1, 5, 5)
+            f_submit = st.form_submit_button("Опублікувати відгук ⭐")
+            
+            if f_submit:
+                if f_name and f_text:
+                    today = datetime.today().strftime('%d.%m.%Y')
+                    cursor.execute("INSERT INTO feedback (name, text, rating, date) VALUES (?, ?, ?, ?)", (f_name, f_text, f_rating, today))
+                    conn.commit()
+                    st.success("Дякуємо! Ваш відгук успішно додано нижче.")
+                else:
+                    st.error("Будь ласка, вкажіть ваше ім'я та заповніть текст відгуку.")
