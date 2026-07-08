@@ -51,7 +51,7 @@ if page == "Головна сторінка":
     with cols[2]:
         st.image("photo3.jpg", caption="Elegant French")
 
-    st.markdown("<div style='text-align: center; margin-top: 30px;'><p>📍 <b>Адреса:</b> м. Київ, вул. Центральна, 12</p><p>📞 <b>Телефон:</b> +380 (93) 123-45-67</p></div>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 30px;'><p>📍 <b>Адреса:</b> м. Богуслав</p><p>📞 <b>Телефон:</b> ???</p></div>", unsafe_allow_html=True)
 
 # --- 2. ПРАЙС ТА ЗАПИС ---
 elif page == "Прайс та Запис":
