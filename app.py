@@ -3,18 +3,15 @@ from datetime import datetime
 
 st.set_page_config(page_title="Luna Studio | Манікюр", page_icon="💅", layout="centered")
 
-# Внутрішня пам'ять для збереження заявок та відгуків у хмарі
+# Пам'ять для збереження заявок та відгуків (тепер список відгуків спочатку повністю порожній)
 if "appointments" not in st.session_state:
     st.session_state.appointments = []
 if "feedbacks" not in st.session_state:
-    st.session_state.feedbacks = [
-        {"name": "Олена", "text": "Манікюр просто супер, тримається вже 3 тижні!", "rating": 5, "date": "05.07.2026"},
-        {"name": "Марія", "text": "Дуже акуратно та гарна рожева атмосфера в студії.", "rating": 5, "date": "07.07.2026"}
-    ]
+    st.session_state.feedbacks = []
 
 ADMIN_PASSWORD = "LunaAdmin2026"
 
-# Красивий рожевий дизайн
+# Акуратний рожевий дизайн
 st.markdown("""
     <style>
     .stApp { background-color: #FFF5F7; }
@@ -46,8 +43,6 @@ if page == "Головна сторінка":
     st.markdown("<p style='text-align: center; font-style: italic; color: #885A65;'>Простір твого бездоганного стилю ✨</p>", unsafe_allow_html=True)
     
     st.markdown("### Наші роботи")
-    
-    # Використовуємо правильні параметри для картинок, щоб не було попереджень у логах
     cols = st.columns(3)
     with cols[0]:
         st.image("photo1.jpg", caption="Нюдова класика")
@@ -80,7 +75,6 @@ elif page == "Прайс та Запис":
         
         if st.form_submit_button("Підтвердити запис 💖"):
             if name and phone:
-                # ТУТ ПОМИЛКУ ВИПРАВЛЕНО (прибрано зайве st.)
                 st.session_state.appointments.append({
                     "name": name, "phone": phone, "service": chosen_service, "date": str(date), "time": str(time)
                 })
@@ -106,11 +100,17 @@ elif page == "Відгуки клієнтів":
                     st.success("Відгук додано!")
                     st.rerun()
 
-    for fb in st.session_state.feedbacks:
-        st.markdown(f'<div class="feedback-box"><b>{fb["name"]}</b> ({fb["date"]})<br>{"⭐"*fb["rating"]}<p>{fb["text"]}</p></div>', unsafe_allow_html=True)
+    st.write("---")
+    
+    # Якщо відгуків немає — виводимо чесний напис
+    if not st.session_state.feedbacks:
+        st.info("Відгуків ще немає. Будьте першою, хто залишить відгук!")
+    else:
+        for fb in st.session_state.feedbacks:
+            st.markdown(f'<div class="feedback-box"><b>{fb["name"]}</b> ({fb["date"]})<br>{"⭐"*fb["rating"]}<p>{fb["text"]}</p></div>', unsafe_allow_html=True)
 
 # --- 4. ПАНЕЛЬ АДМІНІСТРАТОРА ---
-elif page == "👑 Панель Admin":
+elif page == "👑 Панель Адміністратора":
     st.markdown("<h2>Вхід для керівника</h2>")
     password_input = st.text_input("Введіть секретний пароль:", type="password")
     
@@ -121,12 +121,12 @@ elif page == "👑 Панель Admin":
         if st.session_state.appointments:
             for idx, ap in enumerate(st.session_state.appointments):
                 with st.expander(f"📋 Заявка від {ap['name']} (Послуга: {ap['service']})"):
-                    st.write(f"📞 **Телефон:** {ap['phone']}")
-                    st.write(f"📅 **Коли:** {ap['date']} о {ap['time']}")
+                    st.write(f"📞 **Telephone:** {ap['phone']}")
+                    st.write(f"📅 **When:** {ap['date']} at {ap['time']}")
                     if st.button("Видалити заявку", key=f"del_{idx}"):
                         st.session_state.appointments.pop(idx)
                         st.rerun()
         else:
-            st.info("Нових заявок наразі немає. Вони з'являться тут, коли клієнти почнуть записуватися!")
+            st.info("Нових заявок наразі немає.")
     elif password_input != "":
         st.error("Невірний пароль!")
