@@ -45,11 +45,11 @@ if page == "Головна сторінка":
     st.markdown("### Наші роботи")
     cols = st.columns(3)
     with cols[0]:
-        st.image("photo1.jpg", caption="Нюдова класика")
+        st.image("photo1.jpg", caption="Galaxy Pink")
     with cols[1]:
-        st.image("photo2.jpg", caption="Яскравий френч")
+        st.image("photo2.jpg", caption="Love & Stars")
     with cols[2]:
-        st.image("photo3.jpg", caption="Елегантний дизайн")
+        st.image("photo3.jpg", caption="Elegant French")
 
     st.markdown("<div style='text-align: center; margin-top: 30px;'><p>📍 <b>Адреса:</b> м. Київ, вул. Центральна, 12</p><p>📞 <b>Телефон:</b> +380 (93) 123-45-67</p></div>", unsafe_allow_html=True)
 
