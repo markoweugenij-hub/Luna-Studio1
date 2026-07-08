@@ -1,42 +1,24 @@
 import streamlit as st
-import sqlite3
-import os
 from datetime import datetime
 
-# --- 1. НАЛАШТУВАННЯ СТОРІНКИ ТА БАЗИ ДАНИХ ---
 st.set_page_config(page_title="Luna Studio | Манікюр", page_icon="💅", layout="centered")
 
-# Створення бази даних для заявок, відгуків та фотографій
-conn = sqlite3.connect("luna_studio_db.sqlite", check_same_thread=False)
-cursor = conn.cursor()
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS appointments 
-    (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, phone TEXT, service TEXT, date TEXT, time TEXT, status TEXT DEFAULT 'Нова')
-""")
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS feedback 
-    (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, text TEXT, rating INTEGER, date TEXT)
-""")
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS settings 
-    (key TEXT PRIMARY KEY, value TEXT)
-""")
-conn.commit()
+# Внутрішня пам'ять для збереження заявок та відгуків у хмарі
+if "appointments" not in st.session_state:
+    st.session_state.appointments = []
+if "feedbacks" not in st.session_state:
+    st.session_state.feedbacks = [
+        {"name": "Олена", "text": "Манікюр просто супер, тримається вже 3 тижні!", "rating": 5, "date": "05.07.2026"},
+        {"name": "Марія", "text": "Дуже акуратно та гарна рожева атмосфера в студії.", "rating": 5, "date": "07.07.2026"}
+    ]
 
-# Пароль для доступу до адмінки (передайте його тому, хто керуватиме сайтом)
 ADMIN_PASSWORD = "LunaAdmin2026"
 
-# Директорія для збереження завантажених фотографій
-UPLOAD_DIR = "uploaded_works"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-
-# --- 2. ЕСТЕТИЧНИЙ АДАПТИВНИЙ ДИЗАЙН (РОЖЕВИЙ) ---
-pink_style = """
+# Красивий рожевий дизайн
+st.markdown("""
     <style>
     .stApp { background-color: #FFF5F7; }
     h1, h2, h3 { color: #D14D72; font-family: 'Arial', sans-serif; text-align: center; }
-    p, span, label { color: #4A3036 !important; }
     .service-card {
         background-color: #FFFFFF; padding: 20px; border-radius: 16px;
         margin-bottom: 15px; border: 1px solid #FFDEE5;
@@ -51,114 +33,100 @@ pink_style = """
     .feedback-box {
         background-color: #FFFFFF; padding: 15px; border-radius: 12px;
         border-left: 5px solid #FF8E9E; margin-bottom: 10px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
     }
     </style>
-"""
-st.markdown(pink_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- 3. НАВІГАЦІЯ (Вгорі екрану) ---
 page = st.selectbox("Перейти до розділу:", ["Головна сторінка", "Прайс та Запис", "Відгуки клієнтів", "👑 Панель Адміністратора"])
-
 st.write("---")
 
-# ==========================================
-# РОЗДІЛ 1: ГОЛОВНА СТОРІНКА
-# ==========================================
+# --- 1. ГОЛОВНА СТОРІНКА ---
 if page == "Головна сторінка":
     st.markdown("<h1>Luna Studio</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; font-style: italic; color: #885A65;'>Простір твого бездоганного стилю ✨</p>", unsafe_allow_html=True)
     
     st.markdown("### Наші роботи")
-    st.write("Фото оновлюються адміністратором у реальному часі:")
     
-    # Виведення фотографій, які завантажив адмін
+    # Використовуємо правильні параметри для картинок, щоб не було попереджень у логах
     cols = st.columns(3)
-    for i in range(1, 4):
-        img_path = os.path.join(UPLOAD_DIR, f"work_{i}.jpg")
-        with cols[i-1]:
-            if os.path.exists(img_path):
-                st.image(img_path, use_container_width=True, caption=f"Робота №{i}")
-            else:
-                st.image("https://placeholder.com", use_container_width=True, caption="Місце для фото")
+    with cols[0]:
+        st.image("photo1.jpg", caption="Нюдова класика")
+    with cols[1]:
+        st.image("photo2.jpg", caption="Яскравий френч")
+    with cols[2]:
+        st.image("photo3.jpg", caption="Елегантний дизайн")
 
-    st.markdown("""
-    <div style='text-align: center; margin-top: 30px;'>
-        <p>📍 <b>Адреса:</b> м. Київ, вул. Центральна, 12</p>
-        <p>📞 <b>Телефон:</b> +380 (93) 123-45-67</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-top: 30px;'><p>📍 <b>Адреса:</b> м. Київ, вул. Центральна, 12</p><p>📞 <b>Телефон:</b> +380 (93) 123-45-67</p></div>", unsafe_allow_html=True)
 
-# ==========================================
-# РОЗДІЛ 2: ПРАЙС ТА ОНЛАЙН-ЗАПИС
-# ==========================================
+# --- 2. ПРАЙС ТА ЗАПИС ---
 elif page == "Прайс та Запис":
     st.markdown("<h2>Послуги та онлайн-запис</h2>")
-    
     services = [
         {"title": "🌸 Комбінований манікюр", "desc": "Гігієнічна чистка, форма, догляд за кутикулою.", "price": "350 грн"},
-        {"title": "✨ Манікюр + Покриття", "desc": "Вирівнювання пластини, однотонне покриття гель-лаком.", "price": "550 грн"},
+        {"title": "✨ Манікюр + Покриття", "desc": "Вирівнювання пластини, покриття гель-лаком.", "price": "550 грн"},
         {"title": "💅 Нарощування нігтів", "desc": "Моделювання нігтів гелем + легкий дизайн.", "price": "від 750 грн"}
     ]
     
     for s in services:
-        st.markdown(f"""
-        <div class="service-card">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <strong style="color: #D14D72; font-size: 1.1rem;">{s['title']}</strong>
-                <span style="background: #FFDEE5; padding: 4px 10px; border-radius: 12px; font-weight: bold; color: #D14D72;">{s['price']}</span>
-            </div>
-            <p style="margin-top: 8px; margin-bottom: 0; font-size: 0.9rem; color: #666;">{s['desc']}</p>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="service-card"><strong style="color: #D14D72;">{s["title"]}</strong> — <b>{s["price"]}</b><p style="font-size:0.9rem; color:#666;">{s["desc"]}</p></div>', unsafe_allow_html=True)
         
     st.write("---")
-    st.markdown("### Записатися на візит")
-    
     with st.form("appointment_form", clear_on_submit=True):
         name = st.text_input("Ваше ім'я:")
-        phone = st.text_input("Номер телефону для зв'язку (Viber/Telegram):")
+        phone = st.text_input("Номер телефону:")
         chosen_service = st.selectbox("Оберіть послугу:", [s["title"] for s in services])
+        date = st.date_input("Дата:")
+        time = st.time_input("Час:")
         
-        c1, c2 = st.columns(2)
-        with c1:
-            date = st.date_input("Дата візиту:")
-        with c2:
-            time = st.time_input("Бажаний час:")
-            
-        submit = st.form_submit_button("Підтвердити запис 💖")
-        
-        if submit:
+        if st.form_submit_button("Підтвердити запис 💖"):
             if name and phone:
-                cursor.execute(
-                    "INSERT INTO appointments (name, phone, service, date, time) VALUES (?, ?, ?, ?, ?)",
-                    (name, phone, chosen_service, str(date), str(time))
-                )
-                conn.commit()
+                # ТУТ ПОМИЛКУ ВИПРАВЛЕНО (прибрано зайве st.)
+                st.session_state.appointments.append({
+                    "name": name, "phone": phone, "service": chosen_service, "date": str(date), "time": str(time)
+                })
                 st.balloons()
-                st.success(f"✨ Дякуємо, {name}! Заявку надіслано. Майстер зв'яжеться з вами найближчим часом.")
+                st.success("✨ Заявку надіслано майстру! Перевірте її в адмінці.")
             else:
-                st.error("Будь ласка, заповніть поля Ім'я та Телефон!")
+                st.error("Будь ласка, заповніть ім'я та номер телефону!")
 
-# ==========================================
-# РОЗДІЛ 3: ЗВОРОТНІЙ ЗВ'ЯЗОК (ВІДГУКИ)
-# ==========================================
+# --- 3. ВІДГУКИ КЛІЄНТІВ ---
 elif page == "Відгуки клієнтів":
     st.markdown("<h2>Зворотній зв'язок</h2>")
     
-    # Спеціальна кнопка-експандер для написання відгуку
     with st.expander("✍️ Залишити свій відгук студії"):
         with st.form("feedback_form", clear_on_submit=True):
             f_name = st.text_input("Ваше ім'я:")
-            f_text = st.text_area("Ваші враження від візиту (що сподобалось?):")
-            f_rating = st.slider("Ваша оцінка майстру:", 1, 5, 5)
-            f_submit = st.form_submit_button("Опублікувати відгук ⭐")
-            
-            if f_submit:
+            f_text = st.text_area("Ваші враження:")
+            f_rating = st.slider("Оцінка:", 1, 5, 5)
+            if st.form_submit_button("Опублікувати ⭐"):
                 if f_name and f_text:
-                    today = datetime.today().strftime('%d.%m.%Y')
-                    cursor.execute("INSERT INTO feedback (name, text, rating, date) VALUES (?, ?, ?, ?)", (f_name, f_text, f_rating, today))
-                    conn.commit()
-                    st.success("Дякуємо! Ваш відгук успішно додано нижче.")
-                else:
-                    st.error("Будь ласка, вкажіть ваше ім'я та заповніть текст відгуку.")
+                    st.session_state.feedbacks.insert(0, {
+                        "name": f_name, "text": f_text, "rating": f_rating, "date": datetime.today().strftime('%d.%m.%Y')
+                    })
+                    st.success("Відгук додано!")
+                    st.rerun()
+
+    for fb in st.session_state.feedbacks:
+        st.markdown(f'<div class="feedback-box"><b>{fb["name"]}</b> ({fb["date"]})<br>{"⭐"*fb["rating"]}<p>{fb["text"]}</p></div>', unsafe_allow_html=True)
+
+# --- 4. ПАНЕЛЬ АДМІНІСТРАТОРА ---
+elif page == "👑 Панель Admin":
+    st.markdown("<h2>Вхід для керівника</h2>")
+    password_input = st.text_input("Введіть секретний пароль:", type="password")
+    
+    if password_input == ADMIN_PASSWORD:
+        st.success("Доступ дозволено!")
+        
+        st.markdown("### 📥 Нові заявки від клієнтів")
+        if st.session_state.appointments:
+            for idx, ap in enumerate(st.session_state.appointments):
+                with st.expander(f"📋 Заявка від {ap['name']} (Послуга: {ap['service']})"):
+                    st.write(f"📞 **Телефон:** {ap['phone']}")
+                    st.write(f"📅 **Коли:** {ap['date']} о {ap['time']}")
+                    if st.button("Видалити заявку", key=f"del_{idx}"):
+                        st.session_state.appointments.pop(idx)
+                        st.rerun()
+        else:
+            st.info("Нових заявок наразі немає. Вони з'являться тут, коли клієнти почнуть записуватися!")
+    elif password_input != "":
+        st.error("Невірний пароль!")
